@@ -30,6 +30,7 @@ function onEdit(e) {
   }
 }
 
+// Function Add time stamp
 function addTimeStamp(e) {
   const sheetId_1 = 281717863; // Controller
   try {
@@ -67,6 +68,7 @@ function addTimeStamp(e) {
   }
 }
 
+// Function Adjust time stamp
 function adjustTimeStamp(e) {
   const sheetId_1 = 281717863; // Controller
   try {
