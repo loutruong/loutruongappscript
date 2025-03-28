@@ -1,7 +1,7 @@
 // Global variable declaration and store information to reuse
 // const spreadSheetID = "1BYDLENNlvp6yarpq0UUPPwHYj15yRSK-qBOaS80Vs1w"; // Controller
 // const sheetName_1 = "Inc lv1 job tracking"; // Controller
-// const sheetId_1 = 281717863; // Controller
+// const sheetId_1 = "281717863"; // Controller
 // const ss_1 = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
 // Function to get sheet id
 // function checkSheetId() {
@@ -26,7 +26,9 @@ function onEdit(e) {
       console.error("onEdit triggered without event object 'e'.");
     }
   } catch (error) {
-    console.error("Error in onEdit:", error.message);
+    console.error(
+      `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
+    );
   }
 }
 
@@ -45,7 +47,7 @@ function addTimeStamp(e) {
       e.range.getColumn() <=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("H1") // Controller - Chanage the column name
+          .getRange("K1") // Controller - Chanage the column name
           .getColumn() &&
       e.source.getSheetId() === sheetId_1 &&
       e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
@@ -64,7 +66,9 @@ function addTimeStamp(e) {
       console.error("addTimeStamp error");
     }
   } catch (error) {
-    console.error("Error message:", error.message);
+    console.error(
+      `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
+    );
   }
 }
 
@@ -83,7 +87,7 @@ function adjustTimeStamp(e) {
       e.range.getColumn() <=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("H1") // Controller - Chanage the column name
+          .getRange("K1") // Controller - Chanage the column name
           .getColumn() &&
       e.source.getSheetId() === sheetId_1
     ) {
@@ -101,6 +105,8 @@ function adjustTimeStamp(e) {
       console.error("addTimeStamp error");
     }
   } catch (error) {
-    console.error("Error message:", error.message);
+    console.error(
+      `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
+    );
   }
 }
