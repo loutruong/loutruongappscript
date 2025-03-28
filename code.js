@@ -4,8 +4,8 @@ const sheetName_1 = "Inc lv1 job tracking"; // Controller
 const sheetId_1 = "281717863"; // Controller
 
 // Function to get sheet id
-const ss = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1);
 function checkSheetId() {
+  let ss = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1);
   try {
     if (ss) {
       console.log(`The actual ID for ${sheetName_1} is: ${ss.getSheetId()}`);
@@ -17,12 +17,15 @@ function checkSheetId() {
   }
 }
 
-// function onEdit(e) {
-//   if (e) {
-//     e.source
-//       .openById(spreadSheetID)
-//       .getSheetById(sheetId1)
-//       .getRange("A1:A2")
-//       .setValue(new Date());
-//   }
-// }
+// Function callback onEdit
+function onEdit(e) {
+  timeStamp(e);
+}
+
+// Function handle timeStamp feature
+
+function timeStamp(e) {
+  if (e) {
+    e.source.getAcitveSheet().getRange("A11:A12").setValue("Testing");
+  }
+}
