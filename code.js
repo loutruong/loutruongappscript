@@ -21,6 +21,7 @@ function onEdit(e) {
   try {
     if (e) {
       addTimeStamp(e);
+      adjustTimeStamp(e);
     } else {
       console.error("onEdit triggered without event object 'e'.");
     }
@@ -50,7 +51,43 @@ function addTimeStamp(e) {
     ) {
       e.source
         .getActiveSheet()
-        .getRange(e.range.getRow(), 1)
+        .getRange(e.range.getRow(), 1) // Change the column write out position
+        .setValue(
+          Utilities.formatDate(
+            new Date(),
+            "Asia/Ho_Chi_Minh",
+            "yyyy-MM-dd HH:mm:ss"
+          )
+        );
+    } else {
+      console.error("addTimeStamp error");
+    }
+  } catch (error) {
+    console.error("Error message:", error.message);
+  }
+}
+
+function adjustTimeStamp(e) {
+  const sheetId_1 = 281717863; // Controller
+  try {
+    if (
+      e &&
+      e.range.getRow() > 1 &&
+      e.range.getColumn() >=
+        SpreadsheetApp.getActiveSpreadsheet()
+          .getActiveSheet()
+          .getRange("C1") // Controller - Chanage the column name
+          .getColumn() &&
+      e.range.getColumn() <=
+        SpreadsheetApp.getActiveSpreadsheet()
+          .getActiveSheet()
+          .getRange("H1") // Controller - Chanage the column name
+          .getColumn() &&
+      e.source.getSheetId() === sheetId_1
+    ) {
+      e.source
+        .getActiveSheet()
+        .getRange(e.range.getRow(), 2) // Change the column write out position
         .setValue(
           Utilities.formatDate(
             new Date(),
