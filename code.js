@@ -38,12 +38,12 @@ function addTimeStamp(e) {
       e.range.getColumn() >=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("C1")
+          .getRange("C1") // Controller - Chanage the column name
           .getColumn() &&
       e.range.getColumn() <=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("H1")
+          .getRange("H1") // Controller - Chanage the column name
           .getColumn() &&
       e.source.getSheetId() === sheetId_1 &&
       e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
