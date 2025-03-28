@@ -1,7 +1,7 @@
 // Global variable declaration and store information to reuse
 // const spreadSheetID = "1BYDLENNlvp6yarpq0UUPPwHYj15yRSK-qBOaS80Vs1w"; // Controller
 // const sheetName_1 = "Inc lv1 job tracking"; // Controller
-// const sheetId_1 = "281717863"; // Controller
+// const sheetId_1 = 281717863; // Controller
 // const ss_1 = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
 // Function to get sheet id
 // function checkSheetId() {
