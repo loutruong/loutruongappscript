@@ -3,7 +3,8 @@
 // const sheetName_1 = "Inc lv1 job tracking"; // Controller
 // const sheetId_1 = "281717863"; // Controller
 // const ss_1 = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
-// Function to get sheet id
+
+// Feature to get sheet id
 // function checkSheetId() {
 //   try {
 //     if (ss_1) {
@@ -32,7 +33,7 @@ function onEdit(e) {
   }
 }
 
-// Function Add time stamp
+// Feature add timestamp
 function addTimeStamp(e) {
   const sheetId_1 = 281717863; // Controller
   try {
@@ -72,7 +73,7 @@ function addTimeStamp(e) {
   }
 }
 
-// Function Adjust time stamp
+// Feature adjust timestamp
 function adjustTimeStamp(e) {
   const sheetId_1 = 281717863; // Controller
   try {

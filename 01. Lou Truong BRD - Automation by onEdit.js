@@ -2,8 +2,9 @@
 // const spreadSheetID = "1YRbL3n2iNv4hYz202pllVOzfO2Pg8V94AM5GoEX1HKY"; // Controller
 // const sheetName_1 = "Link builder"; // Controller
 // const sheetId_1 = 462100576; // Controller
+// const ss_1 = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
 
-// Function to get sheet id
+// Feature to get sheet id
 // function checkSheetId() {
 //   const ss_1 =
 //     SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
@@ -18,10 +19,12 @@
 //   }
 // }
 
-// Function callback onEdit
+// Feature callback onEdit
 function onEdit(e) {
   try {
     if (e) {
+      addTimeStamp(e);
+      adjustTimeStamp(e);
       linkBuilderIdGenerate(e);
       linkBuilderGenerate(e);
     } else {
@@ -34,15 +37,76 @@ function onEdit(e) {
   }
 }
 
-// Function add id
-function linkBuilderIdGenerate(e) {
+// Feature add timestamp
+function addTimeStamp(e) {
   const sheetId_1 = 462100576; // Controller
-  const idPrefix = "Link_"; // Controller the prefix for the ID
   try {
     if (
       e &&
       e.range.getRow() > 1 &&
-      e.range.getColumn() === 2 &&
+      e.range.getColumn() === 4 &&
+      e.source.getSheetId() === sheetId_1 &&
+      e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
+    ) {
+      e.source
+        .getActiveSheet()
+        .getRange(e.range.getRow(), 2) // Controller
+        .setValue(
+          Utilities.formatDate(
+            new Date(),
+            "Asia/Ho_Chi_Minh",
+            "yyyy-MM-dd HH:mm:ss"
+          )
+        );
+    } else {
+      console.error("addTimeStamp error");
+    }
+  } catch (error) {
+    console.error(
+      `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
+    );
+  }
+}
+
+// Feature adjust timestamp
+function adjustTimeStamp(e) {
+  const sheetId_1 = 462100576; // Controller
+  try {
+    if (
+      e &&
+      e.range.getRow() > 1 &&
+      e.range.getColumn() === 4 &&
+      e.source.getSheetId() === sheetId_1
+    ) {
+      e.source
+        .getActiveSheet()
+        .getRange(e.range.getRow(), 3) // Controller
+        .setValue(
+          Utilities.formatDate(
+            new Date(),
+            "Asia/Ho_Chi_Minh",
+            "yyyy-MM-dd HH:mm:ss"
+          )
+        );
+    } else {
+      console.error("addTimeStamp error");
+    }
+  } catch (error) {
+    console.error(
+      `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
+    );
+  }
+}
+
+// Feature add id
+function linkBuilderIdGenerate(e) {
+  const sheetId_1 = 462100576; // Controller
+  const idPrefix = "link"; // Controller the prefix for the ID
+  try {
+    if (
+      e &&
+      e.range.getRow() > 1 &&
+      e.range.getColumn() === 4 &&
       e.source.getSheetId() === sheetId_1 &&
       e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
     ) {
@@ -71,24 +135,22 @@ function linkBuilderIdGenerate(e) {
   }
 }
 
-// Function add id
+// Feature link builder
 function linkBuilderGenerate(e) {
   // --- Start Configuration ---
-  const sheetName = "Link builder"; // Controller
+  const targetSheetId = 462100576; // Controller
   const firstDataRow = 2; // Row number where your data starts (assuming Row 1 has headers)
 
   // Define column numbers based on structure:
-  // A=1, B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10
-  const idCol = 1; // Column A: Link id (Not used in URL generation)
-  const urlCol = 2; // Column B: link_original (Base URL)
-  const outputCol = 3; // Column C: link_full (Generated URL Output)
-  // const shortOutPutCol = 4 // Column D: link_short manual input
-  const sourceCol = 5; // Column E: utm_source
-  const mediumCol = 6; // Column F: utm_medium
-  const campaignCol = 7; // Column G: utm_campaign
-  const utmIdCol = 8; // Column H: utm_id
-  const termCol = 9; // Column I: utm_term
-  const contentCol = 10; // Column J: utm_content
+  // A=1, B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12
+  const urlCol = 4; // Column D: link_original (Base URL)
+  const outputCol = 5; // Column E: link_full (Generated URL Output)
+  const sourceCol = 7; // Column G: utm_source
+  const mediumCol = 8; // Column H: utm_medium
+  const campaignCol = 9; // Column I: utm_campaign
+  const utmIdCol = 10; // Column J: utm_id
+  const termCol = 11; // Column K: utm_term
+  const contentCol = 12; // Column L: utm_content
 
   // Define which columns trigger the script when edited: We trigger on changes to the base URL or any UTM parameter
   const triggerColumns = [
@@ -108,7 +170,7 @@ function linkBuilderGenerate(e) {
 
   // Exit if the edit is not on the specified sheet, is in the header row, or is not in one of the trigger columns.
   if (
-    sheet.getName() !== sheetName ||
+    sheet.getSheetId() != targetSheetId ||
     editedRow < firstDataRow ||
     !triggerColumns.includes(editedCol)
   ) {
