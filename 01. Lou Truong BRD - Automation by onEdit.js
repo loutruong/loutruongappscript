@@ -25,8 +25,8 @@ function onEdit(e) {
     if (e) {
       addTimeStamp(e);
       adjustTimeStamp(e);
-      linkBuilderIdGenerate(e);
-      linkBuilderGenerate(e);
+      linkbuildId(e);
+      webLinkBuildTool(e);
     } else {
       console.error("onEdit triggered without event object 'e'.");
     }
@@ -39,14 +39,14 @@ function onEdit(e) {
 
 // Feature add timestamp
 function addTimeStamp(e) {
-  const sheetId_1 = 462100576; // Controller
+  const sheetIdList = [462100576, 1894656836, 985243160]; // Controller
   try {
     if (
       e &&
       e.range.getRow() > 1 &&
       e.range.getColumn() === 4 &&
-      e.source.getSheetId() === sheetId_1 &&
-      e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
+      sheetIdList.includes(e.source.getSheetId()) &&
+      e.source.getActiveSheet().getRange(e.range.getRow(), 2).getValue() === "" // Controller
     ) {
       e.source
         .getActiveSheet()
@@ -70,13 +70,13 @@ function addTimeStamp(e) {
 
 // Feature adjust timestamp
 function adjustTimeStamp(e) {
-  const sheetId_1 = 462100576; // Controller
+  const sheetIdList = [462100576, 1894656836, 985243160]; // Controller
   try {
     if (
       e &&
       e.range.getRow() > 1 &&
       e.range.getColumn() === 4 &&
-      e.source.getSheetId() === sheetId_1
+      sheetIdList.includes(e.source.getSheetId())
     ) {
       e.source
         .getActiveSheet()
@@ -99,15 +99,15 @@ function adjustTimeStamp(e) {
 }
 
 // Feature add id
-function linkBuilderIdGenerate(e) {
-  const sheetId_1 = 462100576; // Controller
+function linkbuildId(e) {
+  const sheetIdList = [462100576, 1894656836, 985243160]; // Controller
   const idPrefix = "link"; // Controller the prefix for the ID
   try {
     if (
       e &&
       e.range.getRow() > 1 &&
       e.range.getColumn() === 4 &&
-      e.source.getSheetId() === sheetId_1 &&
+      sheetIdList.includes(e.source.getSheetId()) &&
       e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
     ) {
       let maxIdNumber = 0;
@@ -135,8 +135,8 @@ function linkBuilderIdGenerate(e) {
   }
 }
 
-// Feature link builder
-function linkBuilderGenerate(e) {
+// Feature website link builder
+function webLinkBuildTool(e) {
   // --- Start Configuration ---
   const targetSheetId = 462100576; // Controller
   const firstDataRow = 2; // Row number where your data starts (assuming Row 1 has headers)

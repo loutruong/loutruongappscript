@@ -17,7 +17,7 @@
 //   }
 // }
 
-// Function callback onEdit
+// Feature callback onEdit
 function onEdit(e) {
   try {
     if (e) {
@@ -35,7 +35,7 @@ function onEdit(e) {
 
 // Feature add timestamp
 function addTimeStamp(e) {
-  const sheetId_1 = 281717863; // Controller
+  const sheetIdList = [281717863]; // Controller
   try {
     if (
       e &&
@@ -43,19 +43,19 @@ function addTimeStamp(e) {
       e.range.getColumn() >=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("C1") // Controller - Chanage the column name
+          .getRange("C1") // Controller
           .getColumn() &&
       e.range.getColumn() <=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("K1") // Controller - Chanage the column name
+          .getRange("K1") // Controller
           .getColumn() &&
-      e.source.getSheetId() === sheetId_1 &&
-      e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === ""
+      sheetIdList.includes(e.source.getSheetId()) &&
+      e.source.getActiveSheet().getRange(e.range.getRow(), 1).getValue() === "" // Controller
     ) {
       e.source
         .getActiveSheet()
-        .getRange(e.range.getRow(), 1) // Change the column write out position
+        .getRange(e.range.getRow(), 1) // Controller
         .setValue(
           Utilities.formatDate(
             new Date(),
@@ -75,7 +75,7 @@ function addTimeStamp(e) {
 
 // Feature adjust timestamp
 function adjustTimeStamp(e) {
-  const sheetId_1 = 281717863; // Controller
+  const sheetIdList = [281717863]; // Controller
   try {
     if (
       e &&
@@ -83,18 +83,18 @@ function adjustTimeStamp(e) {
       e.range.getColumn() >=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("C1") // Controller - Chanage the column name
+          .getRange("C1") // Controller
           .getColumn() &&
       e.range.getColumn() <=
         SpreadsheetApp.getActiveSpreadsheet()
           .getActiveSheet()
-          .getRange("K1") // Controller - Chanage the column name
+          .getRange("K1") // Controller
           .getColumn() &&
-      e.source.getSheetId() === sheetId_1
+      sheetIdList.includes(e.source.getSheetId())
     ) {
       e.source
         .getActiveSheet()
-        .getRange(e.range.getRow(), 2) // Change the column write out position
+        .getRange(e.range.getRow(), 2) // Controller
         .setValue(
           Utilities.formatDate(
             new Date(),
