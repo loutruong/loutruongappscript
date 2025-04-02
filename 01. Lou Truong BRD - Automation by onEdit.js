@@ -307,7 +307,7 @@ function affiliateShopeeLinkBuildTool(e) {
     let link_encode_value = "";
     let link_full_value = "";
 
-    // --- Extract seller_id and item_id ---
+    // --- UPDATED Extract seller_id and item_id (Handles multiple formats) ---
     let urlPath = link_original_value;
     const queryIndex = urlPath.indexOf("?");
     if (queryIndex !== -1) {
@@ -317,32 +317,50 @@ function affiliateShopeeLinkBuildTool(e) {
     if (hashIndex !== -1) {
       urlPath = urlPath.substring(0, hashIndex);
     }
-    const lastSlashIndex = urlPath.lastIndexOf("/");
-    const productPart =
-      lastSlashIndex !== -1 ? urlPath.substring(lastSlashIndex + 1) : urlPath;
-    const parts = productPart.split(".");
 
-    if (parts.length >= 2) {
-      const potentialItemId = parts[parts.length - 1];
-      const potentialSellerId = parts[parts.length - 2];
-      if (
-        !isNaN(potentialItemId) &&
-        potentialItemId.trim() !== "" &&
-        !isNaN(potentialSellerId) &&
-        potentialSellerId.trim() !== ""
-      ) {
-        item_id_value = potentialItemId.trim();
-        seller_id_value = potentialSellerId.trim();
+    // Method 1: Check for '/product/seller_id/item_id' format
+    const productPathMatch = urlPath.match(/\/product\/(\d+)\/(\d+)/); // Matches /product/numbers/numbers
+    if (productPathMatch && productPathMatch.length === 3) {
+      // Found match: productPathMatch[1] is seller_id, productPathMatch[2] is item_id
+      seller_id_value = productPathMatch[1];
+      item_id_value = productPathMatch[2];
+      Logger.log(
+        `Row ${row}: Extracted IDs using /product/ format: seller=${seller_id_value}, item=${item_id_value}`
+      );
+    } else {
+      // Method 2: Check for 'name.seller_id.item_id' format at the end of the path
+      const lastSlashIndex = urlPath.lastIndexOf("/");
+      const productPart =
+        lastSlashIndex !== -1 ? urlPath.substring(lastSlashIndex + 1) : urlPath;
+      const parts = productPart.split(".");
+
+      if (parts.length >= 2) {
+        const potentialItemId = parts[parts.length - 1];
+        const potentialSellerId = parts[parts.length - 2];
+        // Validate if both look like numbers
+        if (
+          !isNaN(potentialItemId) &&
+          potentialItemId.trim() !== "" &&
+          !isNaN(potentialSellerId) &&
+          potentialSellerId.trim() !== ""
+        ) {
+          item_id_value = potentialItemId.trim();
+          seller_id_value = potentialSellerId.trim();
+          Logger.log(
+            `Row ${row}: Extracted IDs using .seller.item format: seller=${seller_id_value}, item=${item_id_value}`
+          );
+        } else {
+          Logger.log(
+            `Row ${row}: Found '.' pattern, but failed numeric validation for IDs in '${productPart}'.`
+          );
+        }
       } else {
         Logger.log(
-          `Row ${row}: Failed numeric validation for IDs in '${productPart}'.`
+          `Row ${row}: URL did not match /product/seller/item or name.seller.item formats.`
         );
       }
-    } else {
-      Logger.log(
-        `Row ${row}: URL path part '${productPart}' has unexpected structure for IDs.`
-      );
     }
+    // --- End UPDATED Extraction ---
 
     // --- Populate Columns G & H ---
     sheet.getRange(row, CONFIG.COLUMNS.seller_id).setValue(seller_id_value);
@@ -351,6 +369,7 @@ function affiliateShopeeLinkBuildTool(e) {
     // --- Process further only if IDs were extracted ---
     if (seller_id_value && item_id_value) {
       // --- Create Clean Link (Column I) ---
+      // This clean link format is standard regardless of input format
       link_clean_value = `https://shopee.vn/product/${seller_id_value}/${item_id_value}`;
       sheet.getRange(row, CONFIG.COLUMNS.link_clean).setValue(link_clean_value);
 
@@ -360,8 +379,8 @@ function affiliateShopeeLinkBuildTool(e) {
         .getRange(row, CONFIG.COLUMNS.link_encode)
         .setValue(link_encode_value);
 
-      // --- Construct Initial Final Affiliate Link (Column E) with CORRECT default empty sub_id ---
-      const sub_id_string_default = "----"; // CORRECTED Default placeholder (4 hyphens)
+      // --- Construct Initial Final Affiliate Link (Column E) with default empty sub_id ---
+      const sub_id_string_default = "----"; // Default placeholder (4 hyphens)
       link_full_value = `https://s.shopee.vn/an_redir?sub_id=${sub_id_string_default}&origin_link=${link_encode_value}&affiliate_id=${CONFIG.AFFILIATE_ID}`;
       sheet.getRange(row, CONFIG.COLUMNS.link_full).setValue(link_full_value);
 
