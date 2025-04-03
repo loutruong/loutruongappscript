@@ -33,9 +33,13 @@ function onEdit(e) {
       updateLazadaLinkOnSubIdEdit(e); // Handles edits in Columns J-P
     } else {
       console.error("onEdit triggered without event object 'e'.");
+      Logger.log("onEdit triggered without event object 'e'.");
     }
   } catch (error) {
     console.error(
+      `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
+    );
+    Logger.log(
       `Error in onEdit handler: ${error.message}\nStack: ${error.stack}`
     );
   }
@@ -507,248 +511,236 @@ function updateShopeeLinkOnSubIdEdit(e) {
  * Configuration section
  */
 const CONFIG_LAZADA = {
-  SHEET_ID: 985243160, // The GID of the Lazada sheet
+  SHEET_ID: 985243160, // The GID (Sheet ID) of the Lazada sheet. Find in URL: gid=xxxxxxxx
 
   // Column Indices (1-based index: A=1, B=2, C=3, etc.)
+  // Based on the structure provided in the prompt.
   COLUMNS: {
-    // Input Column:
-    link_original: 4, // D: Raw Lazada URL input (Trigger for ID extraction)
-
-    // Link Full Column (Manual Base Input, Auto Updated with Sub-IDs):
-    link_full: 5, // E: Base affiliate link (manual) + Appended sub-ids (auto)
-
-    // Output Columns (from Col D Trigger):
+    link_id: 1, // A: (Skipped by functions)
+    link_create_time: 2, // B: (Skipped by functions)
+    link_modify_time: 3, // C: (Skipped by functions)
+    link_original: 4, // D: Raw Lazada URL input (Trigger column for extraction)
+    link_full: 5, // E: Manually entered base link / Final generated link with sub-ids (Updated by sub-id edit)
+    link_short: 6, // F: (Skipped by functions)
     product_id: 7, // G: Extracted product ID
     sku_id: 8, // H: Extracted SKU ID
-    link_clean: 9, // I: Generated clean product link
-
-    // Sub-ID Input Columns (Manual Entry - Trigger columns for Col E update):
-    sub_aff_id: 10, // J -> sub_aff_id
-    sub_id1: 11, // K -> sub_id1
-    sub_id2: 12, // L -> sub_id2
-    sub_id3: 13, // M -> sub_id3
-    sub_id4: 14, // N -> sub_id4
-    sub_id5: 15, // O -> sub_id5
-    sub_id6: 16, // P -> sub_id6 (Assuming P is sub_id6)
+    link_clean: 9, // I: Generated clean product link (lazada.vn/products/-i...-s...)
+    sub_aff_id: 10, // J: Tracking Sub Affiliate ID (Input for link_full update)
+    sub_id1: 11, // K: Tracking Sub ID 1 (Input for link_full update)
+    sub_id2: 12, // L: Tracking Sub ID 2 (Input for link_full update)
+    sub_id3: 13, // M: Tracking Sub ID 3 (Input for link_full update)
+    sub_id4: 14, // N: Tracking Sub ID 4 (Input for link_full update)
+    sub_id5: 15, // O: Tracking Sub ID 5 (Input for link_full update)
+    sub_id6: 16, // P: Tracking Sub ID 6 (Input for link_full update) - Corrected from prompt's P=sub_id5
   },
-  // Parameter names mapping for update function
-  SUB_ID_PARAMS: {
-    10: "sub_aff_id", // Col J
-    11: "sub_id1", // Col K
-    12: "sub_id2", // Col L
-    13: "sub_id3", // Col M
-    14: "sub_id4", // Col N
-    15: "sub_id5", // Col O
-    16: "sub_id6", // Col P
-  },
-  // Parameter ORDER for the final URL (as specified in prompt)
-  PARAM_ORDER: [
-    "sub_id1",
-    "sub_aff_id",
-    "sub_id6",
-    "sub_id3",
-    "sub_id2",
-    "sub_id5",
-    "sub_id4",
-  ],
-}; // --- END OF CONFIGURATION ---
+};
 // ========================================================================
 // FEATURE 1: Handles ID Extraction triggered by edits in Column D
 // ========================================================================
 function affiliateLazadaLinkBuildTool(e) {
-  const range = e.range;
-  const sheet = range.getSheet();
-  const row = range.getRow();
-  const col = range.getColumn();
-
-  // --- Pre-checks: Exit if edit is not relevant ---
-  if (
-    sheet.getSheetId() !== CONFIG_LAZADA.SHEET_ID ||
-    col !== CONFIG_LAZADA.COLUMNS.link_original
-  ) {
-    return; // Edit was not in Column D of the target Lazada sheet
-  }
-
-  Logger.log(
-    `affiliateLazadaLinkBuildTool: Processing edit in Sheet GID ${CONFIG_LAZADA.SHEET_ID}, Column ${col}, Row ${row}.`
-  );
-
   try {
-    const link_original_value = range.getValue().toString().trim();
-
-    // --- Initialize variables ---
-    let product_id_value = "";
-    let sku_id_value = "";
-    let link_clean_value = "";
-
-    // --- Handle Empty Input: Clear dependent cells ---
-    if (!link_original_value) {
-      sheet.getRange(row, CONFIG_LAZADA.COLUMNS.product_id).clearContent(); // G
-      sheet.getRange(row, CONFIG_LAZADA.COLUMNS.sku_id).clearContent(); // H
-      sheet.getRange(row, CONFIG_LAZADA.COLUMNS.link_clean).clearContent(); // I
-      // Do NOT clear Column E as it's manual input
-      Logger.log(
-        `Row ${row}: Input 'link_original' (Lazada) is empty. Cleared G, H, I.`
-      );
+    // --- Basic Checks ---
+    if (!e || !e.range) {
+      // Logger.log("affiliateLazadaLinkBuildTool: Event object or range missing.");
       return;
     }
 
-    // --- Extract product_id and sku_id using Regex ---
-    // Format: ...-i{product_id}-s{sku_id}.html...
-    const idMatch = link_original_value.match(/-i(\d+)-s(\d+)\.html/);
-    if (idMatch && idMatch.length === 3) {
-      product_id_value = idMatch[1];
-      sku_id_value = idMatch[2];
-      Logger.log(
-        `Row ${row}: Extracted product_id=${product_id_value}, sku_id=${sku_id_value}`
-      );
+    const sheet = e.source.getActiveSheet();
+    const sheetId = sheet.getSheetId();
+    const editedCol = e.range.getColumn();
+    const editedRow = e.range.getRow();
 
-      // --- Construct Clean Link (Column I) ---
-      link_clean_value = `https://www.lazada.vn/products/-i${product_id_value}-s${sku_id_value}.html`;
-    } else {
-      Logger.log(
-        `Row ${row}: Could not extract product_id and sku_id from URL: ${link_original_value}`
-      );
-      // Clear values if extraction fails
-      product_id_value = "";
-      sku_id_value = "";
-      link_clean_value = "";
+    // --- Configuration Aliases ---
+    const cfg = CONFIG_LAZADA; // Alias for shorter reference
+    const cols = cfg.COLUMNS;
+
+    // --- Sheet and Column Check ---
+    // Check if the edit happened on the correct sheet and in the 'link_original' column
+    if (sheetId !== cfg.SHEET_ID || editedCol !== cols.link_original) {
+      // Logger.log(`affiliateLazadaLinkBuildTool: Edit ignored. Sheet ID: ${sheetId} (Expected: ${cfg.SHEET_ID}), Col: ${editedCol} (Expected: ${cols.link_original})`);
+      return;
     }
 
-    // --- Populate Output Columns G, H, I ---
-    sheet
-      .getRange(row, CONFIG_LAZADA.COLUMNS.product_id)
-      .setValue(product_id_value); // G
-    sheet.getRange(row, CONFIG_LAZADA.COLUMNS.sku_id).setValue(sku_id_value); // H
-    sheet
-      .getRange(row, CONFIG_LAZADA.COLUMNS.link_clean)
-      .setValue(link_clean_value); // I
+    // --- Single Cell Check ---
+    if (e.range.getNumRows() > 1 || e.range.getNumColumns() > 1) {
+      // Logger.log("affiliateLazadaLinkBuildTool: Edit ignored. Only single cell edits are processed.");
+      return;
+    }
 
-    Logger.log(`Row ${row}: Finished processing Lazada Col D edit.`);
+    // --- Get Value and Validate ---
+    const originalUrl = e.value;
+    if (
+      !originalUrl ||
+      typeof originalUrl !== "string" ||
+      !originalUrl.includes("lazada.vn/products/")
+    ) {
+      // Logger.log(`affiliateLazadaLinkBuildTool: Cell in D${editedRow} is empty or not a valid Lazada URL format.`);
+      // Clear dependent cells if the input is invalid or cleared
+      sheet.getRange(editedRow, cols.product_id).clearContent();
+      sheet.getRange(editedRow, cols.sku_id).clearContent();
+      sheet.getRange(editedRow, cols.link_clean).clearContent();
+      return;
+    }
+
+    // --- Regex Extraction ---
+    // Regex to capture product_id (group 1) and sku_id (group 2)
+    const regex = /\/products(?:[\/-])(?:.*-)?i(\d+)-s(\d+)\.html/i;
+    const match = originalUrl.match(regex);
+
+    if (match && match[1] && match[2]) {
+      const productIdValue = match[1]; // Renamed variable based on column name
+      const skuIdValue = match[2]; // Renamed variable based on column name
+
+      // --- Populate Columns ---
+      sheet.getRange(editedRow, cols.product_id).setValue(productIdValue);
+      sheet.getRange(editedRow, cols.sku_id).setValue(skuIdValue);
+
+      const cleanLinkValue = `https://www.lazada.vn/products/-i${productIdValue}-s${skuIdValue}.html`; // Renamed variable
+      sheet.getRange(editedRow, cols.link_clean).setValue(cleanLinkValue);
+
+      // Logger.log(`affiliateLazadaLinkBuildTool: Processed row ${editedRow}. Product ID: ${productIdValue}, SKU ID: ${skuIdValue}`);
+    } else {
+      // Logger.log(`affiliateLazadaLinkBuildTool: Could not extract product/SKU IDs from URL in D${editedRow}: ${originalUrl}`);
+      // Optionally clear G, H, I if the format is wrong but looks like Lazada
+      sheet.getRange(editedRow, cols.product_id).clearContent();
+      sheet.getRange(editedRow, cols.sku_id).clearContent();
+      sheet.getRange(editedRow, cols.link_clean).clearContent();
+    }
   } catch (error) {
     Logger.log(
-      `ERROR in affiliateLazadaLinkBuildTool for row ${row}: ${
-        error.message
-      }\nInput: ${e.range.getValue()}\nStack: ${error.stack}`
+      `Error in affiliateLazadaLinkBuildTool: ${error.message}\nStack: ${error.stack}`
     );
-    // Optionally clear cells or set error status
-    try {
-      sheet
-        .getRange(row, CONFIG_LAZADA.COLUMNS.product_id, 1, 3)
-        .clearContent(); // Clear G, H, I on error
-      // Maybe set status in a dedicated column if available
-    } catch (e2) {
-      Logger.log(`Could not clear cells on error: ${e2}`);
-    }
+    // SpreadsheetApp.getActiveSpreadsheet().toast(`Error processing Lazada link: ${error.message}`);
   }
-} // --- End of affiliateLazadaLinkBuildTool function ---
+}
 
 // ========================================================================
 // FEATURE 2: Handles Sub-ID Updates triggered by edits in Columns J-P
 // ========================================================================
 function updateLazadaLinkOnSubIdEdit(e) {
-  const range = e.range;
-  const sheet = range.getSheet();
-  const row = range.getRow();
-  const col = range.getColumn();
-
-  // --- Pre-checks: Exit if edit is not relevant ---
-  // 1. Check sheet
-  if (sheet.getSheetId() !== CONFIG_LAZADA.SHEET_ID) {
-    return;
-  }
-  // 2. Check if the column is within the sub_id range (J to P)
-  const firstSubIdCol = CONFIG_LAZADA.COLUMNS.sub_aff_id; // J = 10
-  const lastSubIdCol = CONFIG_LAZADA.COLUMNS.sub_id6; // P = 16
-  if (col < firstSubIdCol || col > lastSubIdCol) {
-    return; // Edit was not in columns J-P
-  }
-
-  Logger.log(
-    `updateLazadaLinkOnSubIdEdit: Processing edit in Sub ID Column ${col}, Row ${row}.`
-  );
-
   try {
-    // --- Get the manually entered base link from Column E ---
-    const baseLinkRange = sheet.getRange(row, CONFIG_LAZADA.COLUMNS.link_full);
-    let base_link_full = baseLinkRange.getValue().toString().trim();
-
-    if (!base_link_full) {
-      Logger.log(
-        `Row ${row}: Skipping sub-id update because base link (Col E) is empty.`
-      );
-      return; // Cannot update if the base link isn't there
+    // --- Basic Checks ---
+    if (!e || !e.range) {
+      // Logger.log("updateLazadaLinkOnSubIdEdit: Event object or range missing.");
+      return;
     }
 
-    // --- Extract the base part of the URL (before the first '?') ---
-    let baseUrlPart = base_link_full;
-    const queryStartIndex = base_link_full.indexOf("?");
-    if (queryStartIndex !== -1) {
-      baseUrlPart = base_link_full.substring(0, queryStartIndex);
+    const sheet = e.source.getActiveSheet();
+    const sheetId = sheet.getSheetId();
+    const editedCol = e.range.getColumn();
+    const editedRow = e.range.getRow();
+
+    // --- Configuration Aliases ---
+    const cfg = CONFIG_LAZADA; // Alias for shorter reference
+    const cols = cfg.COLUMNS;
+
+    // --- Sheet and Column Check ---
+    // Check if the edit happened on the correct sheet and in the sub-id columns range (J to P)
+    if (
+      sheetId !== cfg.SHEET_ID ||
+      editedCol < cols.sub_aff_id ||
+      editedCol > cols.sub_id6
+    ) {
+      // Logger.log(`updateLazadaLinkOnSubIdEdit: Edit ignored. Sheet ID: ${sheetId} (Expected: ${cfg.SHEET_ID}), Col: ${editedCol} (Expected: ${cols.sub_aff_id}-${cols.sub_id6})`);
+      return;
     }
 
-    // --- Get current Sub ID values (Columns J-P) ---
-    const subIdRange = sheet.getRange(
-      row,
-      firstSubIdCol,
-      1,
-      lastSubIdCol - firstSubIdCol + 1
-    ); // J to P (7 columns)
-    const subIdValues = subIdRange.getValues()[0]; // [valJ, valK, valL, valM, valN, valO, valP]
+    // --- Process potentially multiple rows if edited simultaneously ---
+    const numRows = e.range.getNumRows();
+    const startRow = editedRow;
 
-    // --- Build the new query string parameters map ---
-    const params = {};
-    for (let i = 0; i < subIdValues.length; i++) {
-      const currentSubIdCol = firstSubIdCol + i; // Column number (10, 11, ...)
-      const paramName = CONFIG_LAZADA.SUB_ID_PARAMS[currentSubIdCol]; // Get param name ('sub_aff_id', 'sub_id1', ...)
-      const paramValue = subIdValues[i];
+    for (let i = 0; i < numRows; i++) {
+      const currentRow = startRow + i;
 
-      // Only include if the parameter name exists and the value is not empty
-      if (
-        paramName &&
-        paramValue !== null &&
-        paramValue !== undefined &&
-        paramValue !== ""
-      ) {
-        params[paramName] = encodeURIComponent(paramValue.toString().trim()); // Store URL-encoded value
+      // --- Get Base URL (from 'link_full' column E) ---
+      const linkFullCell = sheet.getRange(currentRow, cols.link_full);
+      let baseUrl = linkFullCell.getValue(); // This is the manually entered value or previously generated one
+
+      if (!baseUrl || typeof baseUrl !== "string") {
+        // Logger.log(`updateLazadaLinkOnSubIdEdit: Skipping row ${currentRow}. Base URL in Column E ('link_full') is missing or invalid.`);
+        continue; // Skip this row if base URL is missing
       }
-    }
 
-    // --- Construct the final query string respecting PARAM_ORDER ---
-    const queryStringParts = [];
-    for (const key of CONFIG_LAZADA.PARAM_ORDER) {
-      if (params[key]) {
-        // Check if the parameter was added (i.e., had a value)
-        queryStringParts.push(`${key}=${params[key]}`);
+      // Remove existing query string to rebuild it cleanly
+      const questionMarkIndex = baseUrl.indexOf("?");
+      if (questionMarkIndex !== -1) {
+        baseUrl = baseUrl.substring(0, questionMarkIndex);
       }
-    }
 
-    let final_link_full = baseUrlPart; // Start with the base URL part
-    if (queryStringParts.length > 0) {
-      final_link_full += "?" + queryStringParts.join("&"); // Append new query string if any params were added
-    }
+      // --- Get Sub ID Values ---
+      // Fetch all relevant sub-ID values for the current row (Columns J to P)
+      const subValuesRange = sheet.getRange(
+        currentRow,
+        cols.sub_aff_id,
+        1,
+        cols.sub_id6 - cols.sub_aff_id + 1
+      );
+      const subValues = subValuesRange.getValues()[0];
 
-    // --- Update Column E with the final reconstructed link ---
-    // Avoid infinite loops by checking if the value actually changed
-    if (final_link_full !== base_link_full) {
-      baseLinkRange.setValue(final_link_full);
-      Logger.log(
-        `Row ${row}: Successfully updated Final URL (Col E) due to sub-id edit. New link: ${final_link_full}`
-      );
-    } else {
-      Logger.log(
-        `Row ${row}: Sub-id edit resulted in the same final URL. No update written to Col E.`
-      );
+      // Map values based on their position relative to the start column (sub_aff_id)
+      const subAffIdValue = subValues[cols.sub_aff_id - cols.sub_aff_id]; // Index 0
+      const subId1Value = subValues[cols.sub_id1 - cols.sub_aff_id]; // Index 1
+      const subId2Value = subValues[cols.sub_id2 - cols.sub_aff_id]; // Index 2
+      const subId3Value = subValues[cols.sub_id3 - cols.sub_aff_id]; // Index 3
+      const subId4Value = subValues[cols.sub_id4 - cols.sub_aff_id]; // Index 4
+      const subId5Value = subValues[cols.sub_id5 - cols.sub_aff_id]; // Index 5
+      const subId6Value = subValues[cols.sub_id6 - cols.sub_aff_id]; // Index 6
+
+      // --- Build Parameter List ---
+      const params = [];
+      // Use the exact parameter names specified in the initial prompt
+      if (subAffIdValue)
+        params.push(`sub_aff_id=${encodeURIComponent(subAffIdValue)}`);
+      if (subId1Value)
+        params.push(`sub_id1=${encodeURIComponent(subId1Value)}`);
+      if (subId2Value)
+        params.push(`sub_id2=${encodeURIComponent(subId2Value)}`);
+      if (subId3Value)
+        params.push(`sub_id3=${encodeURIComponent(subId3Value)}`);
+      if (subId4Value)
+        params.push(`sub_id4=${encodeURIComponent(subId4Value)}`);
+      if (subId5Value)
+        params.push(`sub_id5=${encodeURIComponent(subId5Value)}`);
+      if (subId6Value)
+        params.push(`sub_id6=${encodeURIComponent(subId6Value)}`);
+
+      // --- Construct Final URL ---
+      let finalFullLinkValue = baseUrl; // Variable name reflects column E
+      if (params.length > 0) {
+        // Reconstruct according to the format: base?param1&param2...
+        // The order follows the prompt's example: K, J, P, M, L, O, N
+        const orderedParams = [];
+        if (subId1Value)
+          orderedParams.push(`sub_id1=${encodeURIComponent(subId1Value)}`);
+        if (subAffIdValue)
+          orderedParams.push(`sub_aff_id=${encodeURIComponent(subAffIdValue)}`);
+        if (subId6Value)
+          orderedParams.push(`sub_id6=${encodeURIComponent(subId6Value)}`);
+        if (subId3Value)
+          orderedParams.push(`sub_id3=${encodeURIComponent(subId3Value)}`);
+        if (subId2Value)
+          orderedParams.push(`sub_id2=${encodeURIComponent(subId2Value)}`);
+        if (subId5Value)
+          orderedParams.push(`sub_id5=${encodeURIComponent(subId5Value)}`);
+        if (subId4Value)
+          orderedParams.push(`sub_id4=${encodeURIComponent(subId4Value)}`);
+
+        finalFullLinkValue += "?" + orderedParams.join("&");
+      }
+
+      // --- Update 'link_full' Column E ---
+      // Only update if the generated URL is different from the current one
+      if (linkFullCell.getValue() !== finalFullLinkValue) {
+        linkFullCell.setValue(finalFullLinkValue);
+        // Logger.log(`updateLazadaLinkOnSubIdEdit: Updated Column E ('link_full') in row ${currentRow} to: ${finalFullLinkValue}`);
+      } else {
+        // Logger.log(`updateLazadaLinkOnSubIdEdit: No update needed for Column E ('link_full') in row ${currentRow}. URL is already correct.`);
+      }
     }
   } catch (error) {
     Logger.log(
-      `ERROR in updateLazadaLinkOnSubIdEdit for row ${row}: ${error.message}\nEdited Sub ID Col: ${col}\nStack: ${error.stack}`
+      `Error in updateLazadaLinkOnSubIdEdit: ${error.message}\nStack: ${error.stack}`
     );
-    try {
-      // Avoid writing error directly to E if possible, maybe use another column or just log
-      // sheet.getRange(row, CONFIG_LAZADA.COLUMNS.link_full).setValue(`ERROR updating sub-ids: ${error.message}`);
-    } catch (e2) {
-      Logger.log(`Could not write error status to sheet: ${e2}`);
-    }
+    // SpreadsheetApp.getActiveSpreadsheet().toast(`Error updating Lazada link parameters: ${error.message}`);
   }
-} // --- End of updateLazadaLinkOnSubIdEdit function ---
+}
