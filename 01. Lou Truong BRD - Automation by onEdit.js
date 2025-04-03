@@ -1,10 +1,10 @@
-// Global variable declaration and store information to reuse
+// // Global variable declaration and store information to reuse
 // const spreadSheetID = "1YRbL3n2iNv4hYz202pllVOzfO2Pg8V94AM5GoEX1HKY"; // Controller
-// const sheetName_1 = "Aff Lzd link build"; // Controller
-// const sheetId_1 = 985243160; // Controller
+// const sheetName_1 = "Aff Other link build"; // Controller
+// const sheetId_1 = 1103978091; // Controller
 // const ss_1 = SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
 
-// Feature to get sheet id
+// // Feature to get sheet id
 // function checkSheetId() {
 //   const ss_1 =
 //     SpreadsheetApp.openById(spreadSheetID).getSheetByName(sheetName_1); // Fixed
@@ -47,7 +47,7 @@ function onEdit(e) {
 
 // Feature add timestamp
 function addTimeStamp(e) {
-  const sheetIdList = [462100576, 1894656836, 985243160]; // Controller
+  const sheetIdList = [462100576, 1894656836, 985243160, 1103978091]; // Controller
   try {
     if (
       e &&
@@ -78,7 +78,7 @@ function addTimeStamp(e) {
 
 // Feature adjust timestamp
 function adjustTimeStamp(e) {
-  const sheetIdList = [462100576, 1894656836, 985243160]; // Controller
+  const sheetIdList = [462100576, 1894656836, 985243160, 1103978091]; // Controller
   try {
     if (
       e &&
@@ -116,9 +116,11 @@ function linkbuildId(e) {
     idPrefix = "linkshp";
   } else if (sheetId === 985243160) {
     idPrefix = "linklzd";
+  } else if (sheetId === 1103978091) {
+    idPrefix = "linkother";
   }
 
-  const sheetIdList = [462100576, 1894656836, 985243160]; // Controller (still used for the initial check)
+  const sheetIdList = [462100576, 1894656836, 985243160, 1103978091]; // Controller (still used for the initial check)
 
   try {
     if (
