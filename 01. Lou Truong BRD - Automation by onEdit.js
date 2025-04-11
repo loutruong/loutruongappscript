@@ -31,6 +31,7 @@ function onEdit(e) {
       updateShopeeLinkOnSubIdEdit(e); // Handles edits in Columns K-O
       affiliateLazadaLinkBuildTool(e); // Handles edits in Column D
       updateLazadaLinkOnSubIdEdit(e); // Handles edits in Columns J-P
+      shortLinkbuild(e);
     } else {
       console.error("onEdit triggered without event object 'e'.");
       Logger.log("onEdit triggered without event object 'e'.");
@@ -106,6 +107,103 @@ function adjustTimeStamp(e) {
   }
 }
 
+// Feature short link builder
+/**
+ * Configuration specific to the short link generation.
+ */
+const SHORT_LINK_CONFIG = {
+  TARGET_SHEET_IDS: [
+    462100576, // Person Link Build GID
+    1894656836, // Aff Shp Link Build GID
+    985243160, // Aff Lzd Link Build GID
+    1103978091, // Aff Other Link Build GID
+  ],
+  LINK_ID_COLUMN: 1, // Column A - Source Data
+  LINK_ORIGINAL_COLUMN: 4, // Column D - Also a trigger
+  LINK_SHORT_COLUMN: 6, // Column F - Target Output
+  BASE_URL: "https://s.loutruong.com/", // Base URL for the short link
+};
+function shortLinkbuild(e) {
+  try {
+    // --- Basic Event Object Check ---
+    if (!e || !e.range) {
+      return;
+    }
+
+    const range = e.range;
+    const sheet = range.getSheet();
+    const sheetId = sheet.getSheetId();
+    const editedCol = range.getColumn();
+    const editedRow = range.getRow();
+
+    // --- Configuration ---
+    const cfg = SHORT_LINK_CONFIG;
+
+    // --- Check if the edit is relevant to this function ---
+    // 1. Is it one of the target sheets?
+    if (!cfg.TARGET_SHEET_IDS.includes(sheetId)) {
+      return; // Not a sheet we care about
+    }
+    // 2. Was Column A OR Column D edited?
+    if (
+      editedCol !== cfg.LINK_ID_COLUMN &&
+      editedCol !== cfg.LINK_ORIGINAL_COLUMN
+    ) {
+      return; // Edit wasn't in Col A or Col D
+    }
+    // 3. Ignore header row
+    if (editedRow <= 1) {
+      return;
+    }
+    // 4. Process only single cell edits for simplicity
+    // (If Col D edits can be multi-cell and you need to handle that, this check needs adjustment)
+    if (range.getNumRows() > 1 || range.getNumColumns() > 1) {
+      Logger.log(
+        `generateShortLink: Row ${editedRow}: Ignoring multi-cell edit.`
+      );
+      return;
+    }
+
+    // --- Perform Action ---
+    Logger.log(
+      `generateShortLink: Processing edit in Col ${editedCol}, Row ${editedRow}, Sheet GID ${sheetId}.`
+    );
+
+    // ALWAYS read the Link ID from Column A of the *edited* row
+    const linkIdCell = sheet.getRange(editedRow, cfg.LINK_ID_COLUMN); // Column A
+    const linkIdValue = linkIdCell.getValue().toString().trim();
+
+    // Get the target cell in Column F
+    const shortLinkCell = sheet.getRange(editedRow, cfg.LINK_SHORT_COLUMN); // Column F
+
+    if (linkIdValue) {
+      // If Link ID has a value, create and set the short link
+      const shortLink = cfg.BASE_URL + linkIdValue; // Assuming linkIdValue is URL-safe
+      // Optional: Check if update is needed to prevent writing same value
+      // if (shortLinkCell.getValue() !== shortLink) {
+      shortLinkCell.setValue(shortLink);
+      Logger.log(
+        `generateShortLink: Row ${editedRow}: Set short link in Col F.`
+      );
+      // }
+    } else {
+      // If Link ID is empty, clear the short link cell
+      // Optional: Check if already clear
+      // if (shortLinkCell.getValue() !== "") {
+      shortLinkCell.clearContent();
+      Logger.log(
+        `generateShortLink: Row ${editedRow}: Cleared short link in Col F because Link ID in Col A is empty.`
+      );
+      // }
+    }
+  } catch (error) {
+    Logger.log(
+      `ERROR in generateShortLink: ${error.message}\nRange: ${
+        e && e.range ? e.range.getA1Notation() : "N/A"
+      }\nStack: ${error.stack}`
+    );
+  }
+}
 // Feature add id
 function linkbuildId(e) {
   const sheetId = e.source.getSheetId();
