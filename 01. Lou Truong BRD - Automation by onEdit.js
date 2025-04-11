@@ -543,21 +543,22 @@ function affiliateLazadaLinkBuildTool(e) {
   try {
     // --- Basic Checks ---
     if (!e || !e.range) {
-      // Logger.log("affiliateLazadaLinkBuildTool: Event object or range missing.");
+      Logger.log(
+        "affiliateLazadaLinkBuildTool: Event object or range missing."
+      );
       return;
     }
 
-    const sheet = e.source.getActiveSheet();
+    const sheet = e.source.getActiveSheet(); // Use e.source for trigger context
     const sheetId = sheet.getSheetId();
     const editedCol = e.range.getColumn();
     const editedRow = e.range.getRow();
 
     // --- Configuration Aliases ---
-    const cfg = CONFIG_LAZADA; // Alias for shorter reference
+    const cfg = CONFIG_LAZADA; // Use the CONFIG_LAZADA defined elsewhere in your script
     const cols = cfg.COLUMNS;
 
     // --- Sheet and Column Check ---
-    // Check if the edit happened on the correct sheet and in the 'link_original' column
     if (sheetId !== cfg.SHEET_ID || editedCol !== cols.link_original) {
       // Logger.log(`affiliateLazadaLinkBuildTool: Edit ignored. Sheet ID: ${sheetId} (Expected: ${cfg.SHEET_ID}), Col: ${editedCol} (Expected: ${cols.link_original})`);
       return;
@@ -565,56 +566,131 @@ function affiliateLazadaLinkBuildTool(e) {
 
     // --- Single Cell Check ---
     if (e.range.getNumRows() > 1 || e.range.getNumColumns() > 1) {
-      // Logger.log("affiliateLazadaLinkBuildTool: Edit ignored. Only single cell edits are processed.");
+      Logger.log(
+        "affiliateLazadaLinkBuildTool: Edit ignored. Only single cell edits are processed for ID extraction."
+      );
       return;
     }
 
-    // --- Get Value and Validate ---
-    const originalUrl = e.value;
-    if (
-      !originalUrl ||
-      typeof originalUrl !== "string" ||
-      !originalUrl.includes("lazada.vn/products/")
-    ) {
-      // Logger.log(`affiliateLazadaLinkBuildTool: Cell in D${editedRow} is empty or not a valid Lazada URL format.`);
+    // --- Get Value ---
+    // Use e.value if available (often faster in onEdit), otherwise get from range
+    const link_original_value =
+      e.value !== undefined && e.value !== null
+        ? e.value.toString().trim()
+        : e.range.getValue().toString().trim();
+
+    // --- Initialize variables ---
+    let product_id_value = "";
+    let sku_id_value = ""; // Will remain empty if not found
+    let link_clean_value = "";
+
+    // --- Handle Empty or Invalid Input ---
+    if (!link_original_value || !link_original_value.includes("lazada.vn")) {
+      // Simplified check
+      Logger.log(
+        `affiliateLazadaLinkBuildTool: Cell in D${editedRow} is empty or not a valid Lazada URL.`
+      );
       // Clear dependent cells if the input is invalid or cleared
-      sheet.getRange(editedRow, cols.product_id).clearContent();
-      sheet.getRange(editedRow, cols.sku_id).clearContent();
-      sheet.getRange(editedRow, cols.link_clean).clearContent();
+      sheet.getRange(editedRow, cols.product_id).clearContent(); // G
+      sheet.getRange(editedRow, cols.sku_id).clearContent(); // H
+      sheet.getRange(editedRow, cols.link_clean).clearContent(); // I
       return;
     }
 
-    // --- Regex Extraction ---
-    // Regex to capture product_id (group 1) and sku_id (group 2)
-    const regex = /\/products(?:[\/-])(?:.*-)?i(\d+)-s(\d+)\.html/i;
-    const match = originalUrl.match(regex);
-
-    if (match && match[1] && match[2]) {
-      const productIdValue = match[1]; // Renamed variable based on column name
-      const skuIdValue = match[2]; // Renamed variable based on column name
-
-      // --- Populate Columns ---
-      sheet.getRange(editedRow, cols.product_id).setValue(productIdValue);
-      sheet.getRange(editedRow, cols.sku_id).setValue(skuIdValue);
-
-      const cleanLinkValue = `https://www.lazada.vn/products/-i${productIdValue}-s${skuIdValue}.html`; // Renamed variable
-      sheet.getRange(editedRow, cols.link_clean).setValue(cleanLinkValue);
-
-      // Logger.log(`affiliateLazadaLinkBuildTool: Processed row ${editedRow}. Product ID: ${productIdValue}, SKU ID: ${skuIdValue}`);
-    } else {
-      // Logger.log(`affiliateLazadaLinkBuildTool: Could not extract product/SKU IDs from URL in D${editedRow}: ${originalUrl}`);
-      // Optionally clear G, H, I if the format is wrong but looks like Lazada
-      sheet.getRange(editedRow, cols.product_id).clearContent();
-      sheet.getRange(editedRow, cols.sku_id).clearContent();
-      sheet.getRange(editedRow, cols.link_clean).clearContent();
+    // --- Prepare URL for Parsing: Remove query string and fragment ---
+    let urlToParse = link_original_value;
+    const queryIndex = link_original_value.indexOf("?");
+    if (queryIndex !== -1) {
+      urlToParse = link_original_value.substring(0, queryIndex);
     }
+    const hashIndex = urlToParse.indexOf("#");
+    if (hashIndex !== -1) {
+      urlToParse = urlToParse.substring(0, hashIndex);
+    }
+    Logger.log(
+      `LAZADA_TOOL: Row ${editedRow}: URL Prepared for Parsing: "${urlToParse}"`
+    );
+    // --- End URL preparation ---
+
+    // --- START NEW EXTRACTION LOGIC ---
+    // 1. Extract Product ID (Essential)
+    // Looks for 'i' + digits, followed by either '-s' or '.html'
+    const productRegex = /i(\d+)(?:-s|\.html)/;
+    const productMatch = urlToParse.match(productRegex);
+    Logger.log(
+      `LAZADA_TOOL: Row ${editedRow}: Product ID Match (i...): ${JSON.stringify(
+        productMatch
+      )}`
+    );
+
+    if (productMatch && productMatch[1]) {
+      // Product ID Found
+      product_id_value = productMatch[1];
+      Logger.log(
+        `LAZADA_TOOL: Row ${editedRow}: Extracted ProductID=${product_id_value}`
+      );
+
+      // 2. Extract SKU ID (Optional)
+      // Looks for '-s' + digits + '.html' in the *same prepared URL*
+      const skuRegex = /-s(\d+)\.html/;
+      const skuMatch = urlToParse.match(skuRegex);
+      Logger.log(
+        `LAZADA_TOOL: Row ${editedRow}: SKU Match (-s...): ${JSON.stringify(
+          skuMatch
+        )}`
+      );
+
+      if (skuMatch && skuMatch[1]) {
+        // SKU ID Found
+        sku_id_value = skuMatch[1];
+        Logger.log(
+          `LAZADA_TOOL: Row ${editedRow}: Extracted SkuID=${sku_id_value}`
+        );
+        // Construct Clean Link WITH SKU
+        link_clean_value = `https://www.lazada.vn/products/-i${product_id_value}-s${sku_id_value}.html`;
+      } else {
+        // SKU ID NOT Found
+        Logger.log(
+          `LAZADA_TOOL: Row ${editedRow}: SKU ID pattern (-s...) not found.`
+        );
+        // Construct Clean Link WITHOUT SKU
+        link_clean_value = `https://www.lazada.vn/products/i${product_id_value}.html`;
+      }
+      Logger.log(
+        `LAZADA_TOOL: Row ${editedRow}: Generated Clean Link: ${link_clean_value}`
+      );
+
+      // 3. Populate Columns G, H, I
+      sheet.getRange(editedRow, cols.product_id).setValue(product_id_value); // G
+      sheet.getRange(editedRow, cols.sku_id).setValue(sku_id_value); // H (Will be empty if SKU not found)
+      sheet.getRange(editedRow, cols.link_clean).setValue(link_clean_value); // I
+    } else {
+      // Product ID itself wasn't found - Clear everything
+      Logger.log(
+        `LAZADA_TOOL: Row ${editedRow}: Essential Product ID pattern (i...) not found in "${urlToParse}"`
+      );
+      sheet.getRange(editedRow, cols.product_id).clearContent(); // G
+      sheet.getRange(editedRow, cols.sku_id).clearContent(); // H
+      sheet.getRange(editedRow, cols.link_clean).clearContent(); // I
+    }
+    // --- END NEW EXTRACTION LOGIC ---
   } catch (error) {
     Logger.log(
-      `Error in affiliateLazadaLinkBuildTool: ${error.message}\nStack: ${error.stack}`
+      `Error in affiliateLazadaLinkBuildTool for row ${editedRow}: ${error.message}\nStack: ${error.stack}`
     );
-    // SpreadsheetApp.getActiveSpreadsheet().toast(`Error processing Lazada link: ${error.message}`);
+    try {
+      // Attempt to clear output cells on error
+      const sheetOnError = e.source.getActiveSheet(); // Re-get sheet just in case
+      const rowOnError = e.range.getRow();
+      sheetOnError
+        .getRange(rowOnError, CONFIG_LAZADA.COLUMNS.product_id, 1, 3)
+        .clearContent(); // Clear G, H, I
+    } catch (e2) {
+      Logger.log(`LAZADA_TOOL: Could not clear cells on error: ${e2}`);
+    }
   }
 }
+// --- End of affiliateLazadaLinkBuildTool function ---
 
 // ========================================================================
 // FEATURE 2: Handles Sub-ID Updates triggered by edits in Columns J-P
